@@ -4,12 +4,14 @@ import com.imaginelearning.books.client.OpenLibraryClient;
 import com.imaginelearning.books.dto.api.BookSummary;
 import com.imaginelearning.books.dto.openlibrary.OpenLibraryBookDoc;
 import com.imaginelearning.books.dto.openlibrary.OpenLibrarySearchResponse;
+import com.imaginelearning.books.exception.BadRequestException;
 import com.imaginelearning.books.mapper.BookMapper;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -41,5 +43,15 @@ class BookSearchServiceTest {
                 new BookSummary("/works/OL1W", "Book One", "Author One"),
                 new BookSummary("/works/OL2W", "Book Two", "Author Two")
         );
+    }
+
+    @Test
+    void throwsBadRequestWhenQueryIsBlank() {
+        OpenLibraryClient openLibraryClient = mock(OpenLibraryClient.class);
+        BookSearchService service = new BookSearchService(openLibraryClient, new BookMapper());
+
+        assertThatThrownBy(() -> service.searchBooks("   "))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("q must be present and not blank");
     }
 }

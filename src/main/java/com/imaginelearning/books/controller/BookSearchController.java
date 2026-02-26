@@ -1,16 +1,15 @@
 package com.imaginelearning.books.controller;
 
 import com.imaginelearning.books.dto.api.BookSummary;
+import com.imaginelearning.books.exception.BadRequestException;
 import com.imaginelearning.books.service.BookSearchService;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Locale;
@@ -43,10 +42,7 @@ public class BookSearchController {
         String normalizedQuery = query.toLowerCase(Locale.ROOT);
         for (String blockedKeyword : BLOCKED_KEYWORDS) {
             if (normalizedQuery.contains(blockedKeyword)) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "q contains blocked keyword: " + blockedKeyword
-                );
+                throw new BadRequestException("q contains blocked keyword: " + blockedKeyword);
             }
         }
     }

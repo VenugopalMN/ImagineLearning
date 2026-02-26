@@ -10,38 +10,72 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
-import org.springframework.web.server.ResponseStatusException;
+
+import java.time.Instant;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
-    @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<ApiError> handleResponseStatus(ResponseStatusException exception) {
-        HttpStatus status = HttpStatus.valueOf(exception.getStatusCode().value());
+    @ExceptionHandler({
+            BadRequestException.class,
+            MissingServletRequestParameterException.class,
+            HandlerMethodValidationException.class,
+            ConstraintViolationException.class,
+            MethodArgumentNotValidException.class
+    })
+    public ResponseEntity<ApiError> handleBadRequest(Exception exception) {
+        String message = extractValidationMessage(exception);
+        return buildError(HttpStatus.BAD_REQUEST, "BAD_REQUEST", message);
+    }
+
+    @ExceptionHandler(ExternalServiceBadResponseException.class)
+    public ResponseEntity<ApiError> handleExternalServiceBadResponse(ExternalServiceBadResponseException exception) {
+        return buildError(HttpStatus.BAD_GATEWAY, "BAD_GATEWAY", exception.getMessage());
+    }
+
+    @ExceptionHandler(ExternalServiceUnavailableException.class)
+    public ResponseEntity<ApiError> handleExternalServiceUnavailable(ExternalServiceUnavailableException exception) {
+        return buildError(HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE", exception.getMessage());
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> handleUnexpected(Exception exception) {
+        return buildError(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "An unexpected error occurred.");
+    }
+
+    private ResponseEntity<ApiError> buildError(HttpStatus status, String code, String message) {
         return ResponseEntity.status(status)
-                .body(new ApiError(exception.getReason()));
+                .body(new ApiError(code, message, Instant.now()));
     }
 
-    @ExceptionHandler(MissingServletRequestParameterException.class)
-    public ResponseEntity<ApiError> handleMissingParameter(MissingServletRequestParameterException exception) {
-        return ResponseEntity.badRequest()
-                .body(new ApiError(exception.getParameterName() + " must be present and not blank"));
-    }
+    private String extractValidationMessage(Exception exception) {
+        if (exception instanceof BadRequestException badRequestException) {
+            return badRequestException.getMessage();
+        }
 
-    @ExceptionHandler(HandlerMethodValidationException.class)
-    public ResponseEntity<ApiError> handleHandlerValidation(HandlerMethodValidationException exception) {
-        String message = exception.getAllValidationResults().stream()
-                .flatMap(result -> result.getResolvableErrors().stream())
-                .map(MessageSourceResolvable::getDefaultMessage)
-                .filter(defaultMessage -> defaultMessage != null && !defaultMessage.isBlank())
-                .findFirst()
-                .orElse("Invalid request parameter: q");
+        if (exception instanceof MissingServletRequestParameterException missingServletRequestParameterException) {
+            return missingServletRequestParameterException.getParameterName() + " must be present and not blank";
+        }
 
-        return ResponseEntity.badRequest().body(new ApiError(message));
-    }
+        if (exception instanceof MethodArgumentNotValidException methodArgumentNotValidException
+                && methodArgumentNotValidException.getBindingResult().hasFieldErrors()) {
+            return methodArgumentNotValidException.getBindingResult().getFieldErrors().getFirst().getDefaultMessage();
+        }
 
-    @ExceptionHandler({ConstraintViolationException.class, MethodArgumentNotValidException.class})
-    public ResponseEntity<ApiError> handleValidation(Exception exception) {
-        return ResponseEntity.badRequest().body(new ApiError("Invalid request parameter: q"));
+        if (exception instanceof HandlerMethodValidationException handlerMethodValidationException) {
+            return handlerMethodValidationException.getAllValidationResults().stream()
+                    .flatMap(result -> result.getResolvableErrors().stream())
+                    .map(MessageSourceResolvable::getDefaultMessage)
+                    .filter(defaultMessage -> defaultMessage != null && !defaultMessage.isBlank())
+                    .findFirst()
+                    .orElse("Invalid request.");
+        }
+
+        if (exception instanceof ConstraintViolationException constraintViolationException
+                && !constraintViolationException.getConstraintViolations().isEmpty()) {
+            return constraintViolationException.getConstraintViolations().iterator().next().getMessage();
+        }
+
+        return "Invalid request.";
     }
 }

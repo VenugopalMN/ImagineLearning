@@ -1,4 +1,6 @@
 package com.imaginelearning.books.dto.error;
 
-public record ApiError(String message) {
+import java.time.Instant;
+
+public record ApiError(String code, String message, Instant timestamp) {
 }
