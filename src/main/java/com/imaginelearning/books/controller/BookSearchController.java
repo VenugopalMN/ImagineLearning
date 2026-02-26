@@ -5,6 +5,8 @@ import com.imaginelearning.books.exception.BadRequestException;
 import com.imaginelearning.books.service.BookSearchService;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +19,8 @@ import java.util.Locale;
 @Validated
 @RestController
 public class BookSearchController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(BookSearchController.class);
 
     private static final List<String> BLOCKED_KEYWORDS = List.of("porn", "drugs", "nazi");
 
@@ -33,6 +37,7 @@ public class BookSearchController {
             @Size(max = 199, message = "q length must be less than 200 characters")
             String query
     ) {
+        LOGGER.info("Received book search request for query='{}'", query);
         validateBlockedKeywords(query);
         List<BookSummary> books = bookSearchService.searchBooks(query);
         return ResponseEntity.ok(books);
