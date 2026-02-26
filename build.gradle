@@ -18,11 +18,12 @@ repositories {
     mavenCentral()
 }
 
-configurations.configureEach {
+configurations.all {
+    exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j-impl'
+    exclude group: 'ch.qos.logback.'
     exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
-    exclude group: 'ch.qos.logback', module: 'logback-classic'
-    exclude group: 'ch.qos.logback', module: 'logback-core'
 }
+
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -32,6 +33,10 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
+
+
+
+
 
 tasks.named('test') {
     useJUnitPlatform()

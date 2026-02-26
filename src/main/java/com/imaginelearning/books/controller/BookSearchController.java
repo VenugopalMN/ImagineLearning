@@ -33,8 +33,8 @@ public class BookSearchController {
     @GetMapping("/api/books/search")
     public ResponseEntity<List<BookSummary>> searchBooks(
             @RequestParam("q")
-            @NotBlank(message = "q must be present and not blank")
-            @Size(max = 199, message = "q length must be less than 200 characters")
+            @NotBlank(message = "query must be present and not blank")
+            @Size(max = 199, message = "query length must be less than 200 characters")
             String query
     ) {
         LOGGER.info("Received book search request for query='{}'", query);
@@ -47,7 +47,7 @@ public class BookSearchController {
         String normalizedQuery = query.toLowerCase(Locale.ROOT);
         for (String blockedKeyword : BLOCKED_KEYWORDS) {
             if (normalizedQuery.contains(blockedKeyword)) {
-                throw new BadRequestException("q contains blocked keyword: " + blockedKeyword);
+                throw new BadRequestException(query + "String contains blocked keyword: " + blockedKeyword);
             }
         }
     }

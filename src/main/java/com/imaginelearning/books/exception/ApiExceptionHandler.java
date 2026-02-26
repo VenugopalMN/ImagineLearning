@@ -59,7 +59,8 @@ public class ApiExceptionHandler {
 
         if (exception instanceof MethodArgumentNotValidException methodArgumentNotValidException
                 && methodArgumentNotValidException.getBindingResult().hasFieldErrors()) {
-            return methodArgumentNotValidException.getBindingResult().getFieldErrors().getFirst().getDefaultMessage();
+            return methodArgumentNotValidException.getBindingResult().getFieldErrors().get(0).getDefaultMessage();
+
         }
 
         if (exception instanceof HandlerMethodValidationException handlerMethodValidationException) {
