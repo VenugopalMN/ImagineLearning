@@ -1,6 +1,8 @@
 package com.imaginelearning.books.controller;
 
 import com.imaginelearning.books.dto.api.BookSummary;
+import com.imaginelearning.books.exception.ExternalServiceBadResponseException;
+import com.imaginelearning.books.exception.ExternalServiceUnavailableException;
 import com.imaginelearning.books.service.BookSearchService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,14 +57,18 @@ class BookSearchControllerTest {
     void returnsBadRequestWhenQIsMissing() throws Exception {
         mockMvc.perform(get("/api/books/search"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("q must be present and not blank"));
+                .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.message").value("q must be present and not blank"))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
     void returnsBadRequestWhenQIsBlank() throws Exception {
         mockMvc.perform(get("/api/books/search").param("q", "   "))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("q must be present and not blank"));
+                .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.message").value("q must be present and not blank"))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
@@ -71,13 +77,53 @@ class BookSearchControllerTest {
 
         mockMvc.perform(get("/api/books/search").param("q", longQuery))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("q length must be less than 200 characters"));
+                .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.message").value("q length must be less than 200 characters"))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
     void returnsBadRequestWhenQContainsBlockedKeywordCaseInsensitive() throws Exception {
         mockMvc.perform(get("/api/books/search").param("q", "History of NaZi Germany"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("q contains blocked keyword: nazi"));
+                .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.message").value("q contains blocked keyword: nazi"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void returnsBadGatewayWhenExternalServiceReturnsMalformedResponse() throws Exception {
+        when(bookSearchService.searchBooks("hobbit"))
+                .thenThrow(new ExternalServiceBadResponseException("External book service returned a malformed response."));
+
+        mockMvc.perform(get("/api/books/search").param("q", "hobbit"))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("BAD_GATEWAY"))
+                .andExpect(jsonPath("$.message").value("External book service returned a malformed response."))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void returnsServiceUnavailableWhenExternalServiceTimesOut() throws Exception {
+        when(bookSearchService.searchBooks("hobbit"))
+                .thenThrow(new ExternalServiceUnavailableException("External book service is unavailable."));
+
+        mockMvc.perform(get("/api/books/search").param("q", "hobbit"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("SERVICE_UNAVAILABLE"))
+                .andExpect(jsonPath("$.message").value("External book service is unavailable."))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void returnsInternalServerErrorForUnhandledExceptions() throws Exception {
+        when(bookSearchService.searchBooks("hobbit"))
+                .thenThrow(new RuntimeException("boom"));
+
+        mockMvc.perform(get("/api/books/search").param("q", "hobbit"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
+                .andExpect(jsonPath("$.message").value("An unexpected error occurred."))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 }
