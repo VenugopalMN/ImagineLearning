@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: books-api
+
+server:
+  port: 8080
+
+logging:
+  level:
+    root: INFO
+    com.imaginelearning.books: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%t] %logger{36} - %msg%n"
